@@ -6,8 +6,8 @@ const router = express.Router();
 /**
  * @swagger
  * tags:
- *   name: Notes
- *   description: Notes management (CRUD)
+ *   - name: Notes
+ *     description: Manage personal notes (CRUD & filtering by tag/category)
  */
 
 /**
@@ -15,6 +15,7 @@ const router = express.Router();
  * /api/notes:
  *   post:
  *     summary: Create a new note
+ *     description: Create a new note with a title, content, and optional tags/categories.
  *     tags: [Notes]
  *     requestBody:
  *       description: Note data to create
@@ -22,26 +23,23 @@ const router = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required: [title, content]
- *             properties:
- *               title:
- *                 type: string
- *                 description: Note title.
- *               content:
- *                 type: string
- *                 description: Note content.
- *               tags:
- *                 type: array
- *                 items: { type: string }
- *               categories:
- *                 type: array
- *                 items: { type: string }
+ *             $ref: "#/components/schemas/NoteCreateRequest"
+ *           examples:
+ *             SimpleNote:
+ *               summary: Minimal note
+ *               value: { "title": "Todo", "content": "Finish homework" }
+ *             FullNote:
+ *               summary: Note with tags/categories
+ *               value: { "title": "Groceries", "content": "Buy eggs", "tags": ["shopping"], "categories": ["personal"] }
  *     responses:
  *       201:
- *         description: Created
+ *         description: Note created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Note"
  *       400:
- *         description: Validation error
+ *         $ref: "#/components/responses/ValidationError"
  */
 router.post(
   '/',
@@ -53,22 +51,47 @@ router.post(
  * @swagger
  * /api/notes:
  *   get:
- *     summary: Get all notes (optionally filter by tags/categories)
+ *     summary: List all notes (optionally filter by tags/categories)
+ *     description: Retrieve all notes. Supports query filtering by tag or category (any match).
  *     tags: [Notes]
  *     parameters:
  *       - in: query
  *         name: tags
  *         schema:
  *           type: string
- *         description: Comma-separated list of tags to filter by.
+ *         description: Comma-separated tags to filter by (e.g. "personal,urgent")
  *       - in: query
  *         name: categories
  *         schema:
  *           type: string
- *         description: Comma-separated list of categories to filter by.
+ *         description: Comma-separated categories to filter by (e.g. "work,ideas")
  *     responses:
  *       200:
- *         description: Array of notes
+ *         description: List of notes, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: "#/components/schemas/Note"
+ *             examples:
+ *               NoteArray:
+ *                 summary: Example notes
+ *                 value:
+ *                   - _id: "6601f6e9b41c26de3cd5bb40"
+ *                     title: "Shopping"
+ *                     content: "Milk, Bread"
+ *                     tags: ["groceries"]
+ *                     categories: ["personal"]
+ *                     createdAt: "2024-04-01T10:11:12Z"
+ *                     updatedAt: "2024-04-01T10:12:12Z"
+ *                   - _id: "6601f6e9b41c26de3cd5bb41"
+ *                     title: "Work tasks"
+ *                     content: "Submit report"
+ *                     tags: ["work"]
+ *                     categories: ["work"]
+ *                     createdAt: "2024-04-02T13:40:20Z"
+ *                     updatedAt: "2024-04-02T13:45:20Z"
  */
 router.get(
   '/',
@@ -80,6 +103,7 @@ router.get(
  * /api/notes/{id}:
  *   get:
  *     summary: Get a note by ID
+ *     description: Retrieve a single note by its MongoDB ObjectId.
  *     tags: [Notes]
  *     parameters:
  *       - in: path
@@ -87,14 +111,19 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
+ *           example: "6601f6e9b41c26de3cd5bb40"
  *         description: The note ID.
  *     responses:
  *       200:
  *         description: Note found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Note"
  *       404:
- *         description: Note not found
+ *         $ref: "#/components/responses/NotFound"
  *       400:
- *         description: Invalid ID
+ *         $ref: "#/components/responses/InvalidId"
  */
 router.get(
   '/:id',
@@ -107,6 +136,7 @@ router.get(
  * /api/notes/{id}:
  *   put:
  *     summary: Update a note by ID
+ *     description: Update note fields (partial update, at least one field required).
  *     tags: [Notes]
  *     parameters:
  *       - in: path
@@ -114,26 +144,33 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
+ *           example: "6601f6e9b41c26de3cd5bb40"
  *         description: The note ID.
  *     requestBody:
- *       description: Fields to update (at least one required)
+ *       description: One or more note fields to update
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               title: { type: string }
- *               content: { type: string }
- *               tags: { type: array, items: { type: string } }
- *               categories: { type: array, items: { type: string } }
+ *             $ref: "#/components/schemas/NoteUpdateRequest"
+ *           examples:
+ *             UpdateTitle:
+ *               summary: Change note title
+ *               value: { "title": "New title" }
+ *             UpdateAll:
+ *               summary: Update all fields
+ *               value: { "title": "T1", "content": "Updated", "tags": ["foo"], "categories": ["archives"] }
  *     responses:
  *       200:
  *         description: Updated note
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Note"
  *       400:
- *         description: Validation or update error
+ *         $ref: "#/components/responses/ValidationError"
  *       404:
- *         description: Note not found
+ *         $ref: "#/components/responses/NotFound"
  */
 router.put(
   '/:id',
@@ -147,6 +184,7 @@ router.put(
  * /api/notes/{id}:
  *   delete:
  *     summary: Delete a note by ID
+ *     description: Remove a note. Returns deleted note object for confirmation.
  *     tags: [Notes]
  *     parameters:
  *       - in: path
@@ -154,14 +192,31 @@ router.put(
  *         required: true
  *         schema:
  *           type: string
+ *           example: "6601f6e9b41c26de3cd5bb40"
  *         description: The note ID.
  *     responses:
  *       200:
  *         description: Note deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/NoteDeleteResponse"
+ *             examples:
+ *               DeletedNote:
+ *                 value:
+ *                   message: "Note deleted"
+ *                   note:
+ *                     _id: "6601f6e9b41c26de3cd5bb40"
+ *                     title: "Trashed note"
+ *                     content: "to be deleted"
+ *                     tags: []
+ *                     categories: []
+ *                     createdAt: "2024-04-01T10:11:12Z"
+ *                     updatedAt: "2024-04-02T12:12:12Z"
  *       404:
- *         description: Note not found
+ *         $ref: "#/components/responses/NotFound"
  *       400:
- *         description: Invalid ID
+ *         $ref: "#/components/responses/InvalidId"
  */
 router.delete(
   '/:id',
