@@ -10,15 +10,15 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const MONGODB_URL = process.env.MONGODB_URL;
-const MONGODB_DB = process.env.MONGODB_DB;
-
 /**
  * Connects to MongoDB using Mongoose, ensures singleton connection, and attaches listeners for monitoring.
+ * Reads MONGODB_URL and MONGODB_DB from environment variables on each call.
  * @returns {Promise<mongoose.Connection>} The Mongoose connection instance.
  */
- // PUBLIC_INTERFACE
+// PUBLIC_INTERFACE
 async function connectDB() {
+  const MONGODB_URL = process.env.MONGODB_URL;
+  const MONGODB_DB = process.env.MONGODB_DB;
   if (!MONGODB_URL) {
     throw new Error('Missing MONGODB_URL in environment variables');
   }
